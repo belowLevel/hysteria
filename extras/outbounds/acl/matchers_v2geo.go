@@ -3,6 +3,7 @@ package acl
 import (
 	"bytes"
 	"errors"
+	"github.com/apernet/hysteria/extras/v2/outbounds"
 	"net"
 	"regexp"
 	"sort"
@@ -46,6 +47,10 @@ func (m *geoipMatcher) matchIP(ip net.IP) bool {
 }
 
 func (m *geoipMatcher) Match(host HostInfo) bool {
+	if host.IPv4 == nil {
+		localResolve(&host)
+	}
+
 	if host.IPv4 != nil {
 		if m.matchIP(host.IPv4) {
 			return !m.Inverse
@@ -210,4 +215,12 @@ func domainAttributeToMap(attrs []*v2geo.Domain_Attribute) map[string]bool {
 		m[attr.Key] = true
 	}
 	return m
+}
+
+func localResolve(host *HostInfo) {
+	ips, err := net.LookupIP(host.Name)
+	if err != nil {
+		return
+	}
+	host.IPv4, host.IPv6 = outbounds.SplitIPv4IPv6(ips)
 }
