@@ -1,6 +1,7 @@
 package outbounds
 
 import (
+	"fmt"
 	"net"
 	"strconv"
 
@@ -42,6 +43,7 @@ type AddrEx struct {
 	Host        string // String representation of the host, can be an IP or a domain name
 	Port        uint16
 	ResolveInfo *ResolveInfo // Only set if there's a resolver in the pipeline
+	Txt         string
 }
 
 func (a *AddrEx) String() string {
@@ -75,10 +77,15 @@ func (a *PluggableOutboundAdapter) TCP(reqAddr string) (net.Conn, error) {
 	if err != nil {
 		return nil, err
 	}
-	return a.PluggableOutbound.TCP(&AddrEx{
+	addrEx := &AddrEx{
 		Host: host,
 		Port: uint16(portInt),
-	})
+	}
+	conn, err := a.PluggableOutbound.TCP(addrEx)
+	if err != nil {
+		err = fmt.Errorf("%s: %w", addrEx.Txt, err)
+	}
+	return conn, err
 }
 
 func (a *PluggableOutboundAdapter) UDP(reqAddr string) (server.UDPConn, error) {

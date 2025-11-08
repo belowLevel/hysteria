@@ -31,6 +31,7 @@ type TextRule struct {
 	ProtoPort     string
 	HijackAddress string
 	LineNum       int
+	Txt           string
 }
 
 func parseLine(line string, num int) *TextRule {
@@ -44,6 +45,7 @@ func parseLine(line string, num int) *TextRule {
 		ProtoPort:     strings.TrimSpace(matches[3]),
 		HijackAddress: strings.TrimSpace(matches[4]),
 		LineNum:       num,
+		Txt:           line,
 	}
 }
 

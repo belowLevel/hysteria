@@ -82,11 +82,12 @@ func (a *aclEngine) handle(reqAddr *AddrEx, proto acl.Protocol) PluggableOutboun
 		hostInfo.IPv4 = reqAddr.ResolveInfo.IPv4
 		hostInfo.IPv6 = reqAddr.ResolveInfo.IPv6
 	}
-	ob, hijackIP := a.RuleSet.Match(hostInfo, proto, reqAddr.Port)
+	ob, hijackIP, txt := a.RuleSet.Match(hostInfo, proto, reqAddr.Port)
 	if ob == nil {
 		// No match, use default outbound
 		return a.Default
 	}
+	reqAddr.Txt = txt
 	if hijackIP != nil {
 		// We must rewrite both Host & ResolveInfo,
 		// as some outbounds only care about Host.

@@ -152,7 +152,8 @@ var defaultOutboundDialer = net.Dialer{
 }
 
 func (o *defaultOutbound) TCP(reqAddr string) (net.Conn, error) {
-	return defaultOutboundDialer.Dial("tcp", reqAddr)
+	conn, err := defaultOutboundDialer.Dial("tcp", reqAddr)
+	return conn, err
 }
 
 func (o *defaultOutbound) UDP(reqAddr string) (UDPConn, error) {

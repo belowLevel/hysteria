@@ -1,6 +1,7 @@
 package acl
 
 import (
+	lru "github.com/hashicorp/golang-lru/v2"
 	"net"
 	"testing"
 
@@ -138,4 +139,89 @@ func Test_geositeMatcher_Match(t *testing.T) {
 			assert.Equalf(t, tt.want, m.Match(tt.host), "Match(%v)", tt.host)
 		})
 	}
+}
+func BenchmarkIpMatcher(b *testing.B) {
+	geoipMap, err := v2geo.LoadGeoIP("v2geo/geoip.dat")
+	assert.NoError(b, err)
+	m, err := newGeoIPMatcher(geoipMap["us"])
+	assert.NoError(b, err)
+	ip := net.ParseIP("73.222.1.100")
+	for i := 0; i < b.N; i++ {
+		m.matchIP(ip)
+	}
+}
+
+func BenchmarkDomainMatcher(b *testing.B) {
+
+	geositeMap, err := v2geo.LoadGeoSite("v2geo/geosite.dat")
+	assert.NoError(b, err)
+	m, err := newGeositeMatcher(geositeMap["cn"], nil)
+	assert.NoError(b, err)
+	host := HostInfo{Name: "baidu.com"}
+	for i := 0; i < b.N; i++ {
+		m.Match(host)
+	}
+}
+func TestDomainMatcher(t *testing.T) {
+	geositeMap, err := v2geo.LoadGeoSite("v2geo/geosite.dat")
+	assert.NoError(t, err)
+	for k, _ := range geositeMap {
+		m, err := newGeositeMatcher(geositeMap[k], nil)
+		assert.NoError(t, err)
+		for _, domain := range m.Domains {
+			if domain.Type == geositeDomainRegex {
+				t.Log(k, "|", domain.Type, "|", domain.Regex)
+			}
+		}
+	}
+
+}
+
+func BenchmarkCache(b *testing.B) {
+	cache, err := lru.New[matchResultCacheKey, matchResult[string]](10000)
+	assert.NoError(b, err)
+	geositeMap, err := v2geo.LoadGeoSite("v2geo/geosite.dat")
+	assert.NoError(b, err)
+	m, err := newGeositeMatcher(geositeMap["cn"], nil)
+	assert.NoError(b, err)
+	for _, v := range m.Domains {
+		cache.Add(matchResultCacheKey{
+			Host:  v.Value,
+			Proto: 0,
+			Port:  0,
+		}, matchResult[string]{
+			Outbound: v.Value,
+		})
+	}
+	for i := 0; i < b.N; i++ {
+		cache.Get(matchResultCacheKey{
+			Host:  "google.com",
+			Proto: 0,
+			Port:  0,
+		})
+	}
+}
+
+func BenchmarkSSKV(b *testing.B) {
+	geositeMap, err := v2geo.LoadGeoSite("v2geo/geosite.dat")
+	assert.NoError(b, err)
+	m, err := newGeositeMatcher(geositeMap["cn"], nil)
+	assert.NoError(b, err)
+	ds, _ := newSSKVMatcher(geositeMap["cn"], nil)
+	b.Logf("loaded %d line, mem size %f MB", len(m.Domains), float32(ds.Size())/1024/1024)
+	host := HostInfo{Name: "baidu.com"}
+	for i := 0; i < b.N; i++ {
+		ds.Match(host)
+	}
+}
+func TestSSKV(t *testing.T) {
+	geositeMap, err := v2geo.LoadGeoSite("v2geo/geosite.dat")
+	assert.NoError(t, err)
+	m, err := newGeositeMatcher(geositeMap["cn"], nil)
+	assert.NoError(t, err)
+	ds, _ := newSSKVMatcher(geositeMap["cn"], nil)
+	t.Logf("loaded %d line, mem size %f MB", len(m.Domains), float32(ds.Size())/1024/1024)
+	host := HostInfo{Name: "ewwd121.com"}
+	t.Log(ds.Match(host))
+
 }

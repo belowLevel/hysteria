@@ -288,7 +288,7 @@ func TestCompile(t *testing.T) {
 	for _, test := range tests {
 		testName := fmt.Sprintf("%s#%s#%d", test.host, test.proto, test.port)
 		t.Run(testName, func(t *testing.T) {
-			gotOutbound, gotIP := comp.Match(test.host, test.proto, test.port)
+			gotOutbound, gotIP, _ := comp.Match(test.host, test.proto, test.port)
 			assert.Equal(t, test.wantOutbound, gotOutbound)
 			assert.Equal(t, test.wantIP, gotIP)
 		})

@@ -47,7 +47,7 @@ func (h HostInfo) String() string {
 }
 
 type CompiledRuleSet[O Outbound] interface {
-	Match(host HostInfo, proto Protocol, port uint16) (O, net.IP)
+	Match(host HostInfo, proto Protocol, port uint16) (O, net.IP, string)
 }
 
 type compiledRule[O Outbound] struct {
@@ -57,6 +57,7 @@ type compiledRule[O Outbound] struct {
 	StartPort     uint16
 	EndPort       uint16
 	HijackAddress net.IP
+	Txt           string
 }
 
 func (r *compiledRule[O]) Match(host HostInfo, proto Protocol, port uint16) bool {
@@ -72,6 +73,7 @@ func (r *compiledRule[O]) Match(host HostInfo, proto Protocol, port uint16) bool
 type matchResult[O Outbound] struct {
 	Outbound      O
 	HijackAddress net.IP
+	Txt           string
 }
 
 type compiledRuleSetImpl[O Outbound] struct {
@@ -85,7 +87,7 @@ type matchResultCacheKey struct {
 	Port  uint16
 }
 
-func (s *compiledRuleSetImpl[O]) Match(host HostInfo, proto Protocol, port uint16) (O, net.IP) {
+func (s *compiledRuleSetImpl[O]) Match(host HostInfo, proto Protocol, port uint16) (O, net.IP, string) {
 	host.Name = strings.ToLower(host.Name) // Normalize host name to lower case
 	key := matchResultCacheKey{
 		Host:  host.String(),
@@ -93,19 +95,19 @@ func (s *compiledRuleSetImpl[O]) Match(host HostInfo, proto Protocol, port uint1
 		Port:  port,
 	}
 	if result, ok := s.Cache.Get(key); ok {
-		return result.Outbound, result.HijackAddress
+		return result.Outbound, result.HijackAddress, result.Txt
 	}
 	for _, rule := range s.Rules {
 		if rule.Match(host, proto, port) {
-			result := matchResult[O]{rule.Outbound, rule.HijackAddress}
+			result := matchResult[O]{rule.Outbound, rule.HijackAddress, rule.Txt}
 			s.Cache.Add(key, result)
-			return result.Outbound, result.HijackAddress
+			return result.Outbound, result.HijackAddress, result.Txt
 		}
 	}
 	// No match should also be cached
 	var zero O
-	s.Cache.Add(key, matchResult[O]{zero, nil})
-	return zero, nil
+	s.Cache.Add(key, matchResult[O]{zero, nil, ""})
+	return zero, nil, ""
 }
 
 type CompilationError struct {
@@ -151,7 +153,7 @@ func Compile[O Outbound](rules []TextRule, outbounds map[string]O,
 				return nil, &CompilationError{rule.LineNum, fmt.Sprintf("invalid hijack address (must be an IP address): %s", rule.HijackAddress)}
 			}
 		}
-		compiledRules[i] = compiledRule[O]{outbound, hm, proto, startPort, endPort, hijackAddress}
+		compiledRules[i] = compiledRule[O]{outbound, hm, proto, startPort, endPort, hijackAddress, rule.Txt}
 	}
 	cache, err := lru.New[matchResultCacheKey, matchResult[O]](cacheSize)
 	if err != nil {
@@ -272,7 +274,8 @@ func compileHostMatcher(addr string, geoLoader GeoLoader) (hostMatcher, string) 
 		if !ok || list == nil {
 			return nil, fmt.Sprintf("GeoSite name %s not found", name)
 		}
-		m, err := newGeositeMatcher(list, attrs)
+		//m, err := newGeositeMatcher(list, attrs)
+		m, err := newSSKVMatcher(list, attrs)
 		if err != nil {
 			return nil, err.Error()
 		}
