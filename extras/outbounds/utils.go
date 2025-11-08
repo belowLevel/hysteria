@@ -38,7 +38,3 @@ func tryParseIP(addr *AddrEx) bool {
 	}
 	return false
 }
-
-func SplitIPv4IPv6(ips []net.IP) (ipv4, ipv6 net.IP) {
-	return splitIPv4IPv6(ips)
-}

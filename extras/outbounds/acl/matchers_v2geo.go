@@ -3,7 +3,6 @@ package acl
 import (
 	"bytes"
 	"errors"
-	"github.com/apernet/hysteria/extras/v2/outbounds"
 	"net"
 	"regexp"
 	"sort"
@@ -222,5 +221,24 @@ func localResolve(host *HostInfo) {
 	if err != nil {
 		return
 	}
-	host.IPv4, host.IPv6 = outbounds.SplitIPv4IPv6(ips)
+	host.IPv4, host.IPv6 = splitIPv4IPv6(ips)
+}
+
+func splitIPv4IPv6(ips []net.IP) (ipv4, ipv6 net.IP) {
+	for _, ip := range ips {
+		if ip.To4() != nil {
+			if ipv4 == nil {
+				ipv4 = ip
+			}
+		} else {
+			if ipv6 == nil {
+				ipv6 = ip
+			}
+		}
+		if ipv4 != nil && ipv6 != nil {
+			// We have everything we need.
+			break
+		}
+	}
+	return ipv4, ipv6
 }
