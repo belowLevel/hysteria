@@ -54,7 +54,7 @@ func Test_ipMatcher_Match(t *testing.T) {
 			m := &ipMatcher{
 				IP: tt.IP,
 			}
-			if got := m.Match(tt.host); got != tt.want {
+			if got := m.Match(&tt.host); got != tt.want {
 				t.Errorf("Match() = %v, want %v", got, tt.want)
 			}
 		})
@@ -133,7 +133,7 @@ func Test_cidrMatcher_Match(t *testing.T) {
 			m := &cidrMatcher{
 				IPNet: tt.IPNet,
 			}
-			if got := m.Match(tt.host); got != tt.want {
+			if got := m.Match(&tt.host); got != tt.want {
 				t.Errorf("Match() = %v, want %v", got, tt.want)
 			}
 		})
@@ -343,7 +343,7 @@ func Test_domainMatcher_Match(t *testing.T) {
 				Pattern: tt.fields.Pattern,
 				Mode:    tt.fields.Mode,
 			}
-			if got := m.Match(tt.host); got != tt.want {
+			if got := m.Match(&tt.host); got != tt.want {
 				t.Errorf("Match() = %v, want %v", got, tt.want)
 			}
 		})

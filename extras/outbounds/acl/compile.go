@@ -47,7 +47,7 @@ func (h HostInfo) String() string {
 }
 
 type CompiledRuleSet[O Outbound] interface {
-	Match(host HostInfo, proto Protocol, port uint16) (O, net.IP, string)
+	Match(host *HostInfo, proto Protocol, port uint16) (O, net.IP, string)
 }
 
 type compiledRule[O Outbound] struct {
@@ -60,7 +60,7 @@ type compiledRule[O Outbound] struct {
 	Txt           string
 }
 
-func (r *compiledRule[O]) Match(host HostInfo, proto Protocol, port uint16) bool {
+func (r *compiledRule[O]) Match(host *HostInfo, proto Protocol, port uint16) bool {
 	if r.Protocol != ProtocolBoth && r.Protocol != proto {
 		return false
 	}
@@ -87,7 +87,7 @@ type matchResultCacheKey struct {
 	Port  uint16
 }
 
-func (s *compiledRuleSetImpl[O]) Match(host HostInfo, proto Protocol, port uint16) (O, net.IP, string) {
+func (s *compiledRuleSetImpl[O]) Match(host *HostInfo, proto Protocol, port uint16) (O, net.IP, string) {
 	host.Name = strings.ToLower(host.Name) // Normalize host name to lower case
 	key := matchResultCacheKey{
 		Host:  host.String(),

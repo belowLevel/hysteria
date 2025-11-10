@@ -45,9 +45,9 @@ func (m *geoipMatcher) matchIP(ip net.IP) bool {
 	return false
 }
 
-func (m *geoipMatcher) Match(host HostInfo) bool {
+func (m *geoipMatcher) Match(host *HostInfo) bool {
 	if host.IPv4 == nil {
-		localResolve(&host)
+		localResolve(host)
 	}
 
 	if host.IPv4 != nil {
@@ -122,7 +122,7 @@ type geositeMatcher struct {
 	Attrs []string
 }
 
-func (m *geositeMatcher) matchDomain(domain geositeDomain, host HostInfo) bool {
+func (m *geositeMatcher) matchDomain(domain geositeDomain, host *HostInfo) bool {
 	// Match attributes first
 	if len(m.Attrs) > 0 {
 		if len(domain.Attrs) == 0 {
@@ -155,7 +155,7 @@ func (m *geositeMatcher) matchDomain(domain geositeDomain, host HostInfo) bool {
 	return false
 }
 
-func (m *geositeMatcher) Match(host HostInfo) bool {
+func (m *geositeMatcher) Match(host *HostInfo) bool {
 	for _, domain := range m.Domains {
 		if m.matchDomain(domain, host) {
 			return true

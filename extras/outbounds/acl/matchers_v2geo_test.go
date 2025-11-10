@@ -59,7 +59,7 @@ func Test_geoipMatcher_Match(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			assert.Equalf(t, tt.want, m.Match(tt.host), "Match(%v)", tt.host)
+			assert.Equalf(t, tt.want, m.Match(&tt.host), "Match(%v)", tt.host)
 		})
 	}
 }
@@ -136,7 +136,7 @@ func Test_geositeMatcher_Match(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			m.Attrs = tt.attrs
-			assert.Equalf(t, tt.want, m.Match(tt.host), "Match(%v)", tt.host)
+			assert.Equalf(t, tt.want, m.Match(&tt.host), "Match(%v)", tt.host)
 		})
 	}
 }
@@ -159,7 +159,7 @@ func BenchmarkDomainMatcher(b *testing.B) {
 	assert.NoError(b, err)
 	host := HostInfo{Name: "baidu.com"}
 	for i := 0; i < b.N; i++ {
-		m.Match(host)
+		m.Match(&host)
 	}
 }
 func TestDomainMatcher(t *testing.T) {
@@ -211,7 +211,7 @@ func BenchmarkSSKV(b *testing.B) {
 	b.Logf("loaded %d line, mem size %f MB", len(m.Domains), float32(ds.Size())/1024/1024)
 	host := HostInfo{Name: "baidu.com"}
 	for i := 0; i < b.N; i++ {
-		ds.Match(host)
+		ds.Match(&host)
 	}
 }
 func TestSSKV(t *testing.T) {
@@ -222,6 +222,6 @@ func TestSSKV(t *testing.T) {
 	ds, _ := newSSKVMatcher(geositeMap["cn"], nil)
 	t.Logf("loaded %d line, mem size %f MB", len(m.Domains), float32(ds.Size())/1024/1024)
 	host := HostInfo{Name: "ewwd121.com"}
-	t.Log(ds.Match(host))
+	t.Log(ds.Match(&host))
 
 }

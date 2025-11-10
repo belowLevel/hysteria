@@ -8,7 +8,7 @@ type DomainSet struct {
 	Set *Set
 }
 
-func (d *DomainSet) Match(host HostInfo) bool {
+func (d *DomainSet) Match(host *HostInfo) bool {
 	if d.Set == nil {
 		return false
 	}
