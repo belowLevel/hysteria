@@ -7,7 +7,7 @@ toolchain go1.25.1
 require (
 	github.com/apernet/go-tproxy v0.0.0-20230809025308-8f4723fd742f
 	github.com/apernet/hysteria/core/v2 v2.0.0-00010101000000-000000000000
-	github.com/apernet/hysteria/extras/v2 v2.0.0-00010101000000-000000000000
+	github.com/apernet/hysteria/extras/v2 v2.6.5
 	github.com/apernet/sing-tun v0.2.6-0.20250920121535-299f04629986
 	github.com/caddyserver/certmagic v0.17.2
 	github.com/libdns/cloudflare v0.1.1
@@ -49,6 +49,7 @@ require (
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/miekg/dns v1.1.59 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/openacid/low v0.1.21 // indirect
 	github.com/patrickmn/go-cache v2.1.0+incompatible // indirect
 	github.com/pelletier/go-toml/v2 v2.0.6 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
