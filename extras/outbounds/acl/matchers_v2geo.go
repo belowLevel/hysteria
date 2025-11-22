@@ -1,11 +1,9 @@
 package acl
 
 import (
-	"bytes"
 	"errors"
 	"net"
 	"regexp"
-	"sort"
 	"strings"
 
 	"github.com/apernet/hysteria/extras/v2/outbounds/acl/v2geo"
@@ -14,33 +12,20 @@ import (
 var _ hostMatcher = (*geoipMatcher)(nil)
 
 type geoipMatcher struct {
-	N4      []*net.IPNet // sorted
-	N6      []*net.IPNet // sorted
-	Inverse bool
+	country string
 }
 
-// matchIP tries to match the given IP address with the corresponding IPNets.
-// Note that this function does NOT handle the Inverse flag.
 func (m *geoipMatcher) matchIP(ip net.IP) bool {
-	var n []*net.IPNet
-	if ip4 := ip.To4(); ip4 != nil {
-		// N4 stores IPv4 addresses in 4-byte form.
-		// Make sure we use it here too, otherwise bytes.Compare will fail.
-		ip = ip4
-		n = m.N4
-	} else {
-		n = m.N6
+	if ipReader == nil {
+		return false
 	}
-	left, right := 0, len(n)-1
-	for left <= right {
-		mid := (left + right) / 2
-		if n[mid].Contains(ip) {
-			return true
-		} else if bytes.Compare(n[mid].IP, ip) < 0 {
-			left = mid + 1
-		} else {
-			right = mid - 1
-		}
+	isos := ipReader.LookupCode(ip)
+	if len(isos) == 0 {
+		return false
+	}
+	iso := isos[0]
+	if iso == m.country {
+		return true
 	}
 	return false
 }
@@ -49,51 +34,18 @@ func (m *geoipMatcher) Match(host *HostInfo) bool {
 	if host.IPv4 == nil {
 		localResolve(host)
 	}
-
 	if host.IPv4 != nil {
-		if m.matchIP(host.IPv4) {
-			return !m.Inverse
-		}
+		return m.matchIP(host.IPv4)
 	}
 	if host.IPv6 != nil {
-		if m.matchIP(host.IPv6) {
-			return !m.Inverse
-		}
+		return m.matchIP(host.IPv6)
 	}
-	return m.Inverse
+	return false
 }
 
-func newGeoIPMatcher(list *v2geo.GeoIP) (*geoipMatcher, error) {
-	n4 := make([]*net.IPNet, 0)
-	n6 := make([]*net.IPNet, 0)
-	for _, cidr := range list.Cidr {
-		if len(cidr.Ip) == 4 {
-			// IPv4
-			n4 = append(n4, &net.IPNet{
-				IP:   cidr.Ip,
-				Mask: net.CIDRMask(int(cidr.Prefix), 32),
-			})
-		} else if len(cidr.Ip) == 16 {
-			// IPv6
-			n6 = append(n6, &net.IPNet{
-				IP:   cidr.Ip,
-				Mask: net.CIDRMask(int(cidr.Prefix), 128),
-			})
-		} else {
-			return nil, errors.New("invalid IP length")
-		}
-	}
-	// Sort the IPNets, so we can do binary search later.
-	sort.Slice(n4, func(i, j int) bool {
-		return bytes.Compare(n4[i].IP, n4[j].IP) < 0
-	})
-	sort.Slice(n6, func(i, j int) bool {
-		return bytes.Compare(n6[i].IP, n6[j].IP) < 0
-	})
+func newGeoIPMatcher(country string) (*geoipMatcher, error) {
 	return &geoipMatcher{
-		N4:      n4,
-		N6:      n6,
-		Inverse: list.InverseMatch,
+		country: country,
 	}, nil
 }
 

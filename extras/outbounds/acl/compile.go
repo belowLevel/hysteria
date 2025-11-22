@@ -120,8 +120,8 @@ func (e *CompilationError) Error() string {
 }
 
 type GeoLoader interface {
-	LoadGeoIP() (map[string]*v2geo.GeoIP, error)
 	LoadGeoSite() (map[string]*v2geo.GeoSite, error)
+	LoadGeoMMDB() (*IPReader, error)
 }
 
 // Compile compiles TextRules into a CompiledRuleSet.
@@ -234,6 +234,8 @@ func parseProtoPort(protoPort string) (Protocol, uint16, uint16, bool) {
 	}
 }
 
+var ipReader *IPReader
+
 func compileHostMatcher(addr string, geoLoader GeoLoader) (hostMatcher, string) {
 	addr = strings.ToLower(addr) // Normalize to lower case
 	if addr == "*" || addr == "all" {
@@ -246,15 +248,14 @@ func compileHostMatcher(addr string, geoLoader GeoLoader) (hostMatcher, string) 
 		if len(country) == 0 {
 			return nil, "empty GeoIP country code"
 		}
-		gMap, err := geoLoader.LoadGeoIP()
-		if err != nil {
-			return nil, err.Error()
+		if ipReader == nil {
+			mmdb, err := geoLoader.LoadGeoMMDB()
+			if err != nil {
+				return nil, err.Error()
+			}
+			ipReader = mmdb
 		}
-		list, ok := gMap[country]
-		if !ok || list == nil {
-			return nil, fmt.Sprintf("GeoIP country code %s not found", country)
-		}
-		m, err := newGeoIPMatcher(list)
+		m, err := newGeoIPMatcher(country)
 		if err != nil {
 			return nil, err.Error()
 		}
@@ -291,6 +292,13 @@ func compileHostMatcher(addr string, geoLoader GeoLoader) (hostMatcher, string) 
 			Pattern: suffix,
 			Mode:    domainMatchSuffix,
 		}, ""
+	}
+	if strings.HasPrefix(addr, "domf:") {
+		di, err := newFileDI(addr)
+		if err != nil {
+			return nil, err.Error()
+		}
+		return di, ""
 	}
 	if strings.Contains(addr, "/") {
 		// CIDR matcher

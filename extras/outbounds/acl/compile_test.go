@@ -22,6 +22,10 @@ func (l *testGeoLoader) LoadGeoSite() (map[string]*v2geo.GeoSite, error) {
 	return v2geo.LoadGeoSite("v2geo/geosite.dat")
 }
 
+func (l *testGeoLoader) LoadGeoMMDB() (*IPReader, error) {
+	return NewIPInstance("v2geo/country.mmdb")
+}
+
 func TestCompile(t *testing.T) {
 	ob1, ob2, ob3, ob4, ob5, ob6 := 1, 2, 3, 4, 5, 6
 	rules := []TextRule{

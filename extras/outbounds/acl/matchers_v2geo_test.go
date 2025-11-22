@@ -10,9 +10,10 @@ import (
 )
 
 func Test_geoipMatcher_Match(t *testing.T) {
-	geoipMap, err := v2geo.LoadGeoIP("v2geo/geoip.dat")
+	geoipMap, err := NewIPInstance("v2geo/country.mmdb")
 	assert.NoError(t, err)
-	m, err := newGeoIPMatcher(geoipMap["us"])
+	ipReader = geoipMap
+	m, err := newGeoIPMatcher("us")
 	assert.NoError(t, err)
 
 	tests := []struct {
@@ -141,9 +142,10 @@ func Test_geositeMatcher_Match(t *testing.T) {
 	}
 }
 func BenchmarkIpMatcher(b *testing.B) {
-	geoipMap, err := v2geo.LoadGeoIP("v2geo/geoip.dat")
+	geoipMap, err := NewIPInstance("v2geo/country.mmdb")
 	assert.NoError(b, err)
-	m, err := newGeoIPMatcher(geoipMap["us"])
+	ipReader = geoipMap
+	m, err := newGeoIPMatcher("us")
 	assert.NoError(b, err)
 	ip := net.ParseIP("73.222.1.100")
 	for i := 0; i < b.N; i++ {
