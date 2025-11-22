@@ -4,6 +4,7 @@ import (
 	"github.com/oschwald/maxminddb-golang"
 	"net"
 	"strings"
+	"sync"
 )
 
 type geoip2Country struct {
@@ -14,6 +15,8 @@ type geoip2Country struct {
 
 type IPReader struct {
 	*maxminddb.Reader
+	lock  sync.Mutex
+	close bool
 }
 
 type ASNReader struct {
@@ -26,6 +29,11 @@ type GeoLite2 struct {
 }
 
 func (r *IPReader) LookupCode(ipAddress net.IP) []string {
+	r.lock.Lock()
+	defer r.lock.Unlock()
+	if r.close {
+		return []string{}
+	}
 	var country geoip2Country
 	_ = r.Lookup(ipAddress, &country)
 	if country.Country.IsoCode == "" {

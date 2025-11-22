@@ -221,3 +221,12 @@ func NewIPInstance(mmdbPath string) (*IPReader, error) {
 	}
 	return &IPReader{Reader: mmdb}, nil
 }
+
+func (l *GeoLoaderT) CloseMMdb() {
+	if l.ipreader != nil {
+		l.ipreader.lock.Lock()
+		defer l.ipreader.lock.Unlock()
+		l.ipreader.close = true
+		l.ipreader.Close()
+	}
+}

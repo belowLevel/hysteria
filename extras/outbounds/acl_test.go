@@ -1,7 +1,11 @@
 package outbounds
 
 import (
+	"github.com/apernet/hysteria/extras/v2/outbounds/acl"
+	"log"
 	"net"
+	"net/url"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -58,4 +62,97 @@ reJect(nsa.gov)
 	conn, err = acl.TCP(&AddrEx{Host: "nsa.gov"})
 	assert.Error(t, err)
 	assert.Nil(t, conn)
+}
+
+func TestACL(t *testing.T) {
+	var urls = map[string]string{
+		"p1": "socks5://alice:secret123@203.0.113.5:1080",
+	}
+	var obs = buildOutbounds(urls)
+	var uOb PluggableOutbound
+	Inline := []string{
+		//"v6_only(suffix:gstatic.com)",
+		"reject(geoip:cn)",
+		"default(geoip:private)",
+		"v6_only(geosite:youtube)",
+		"v4_only(all)",
+		"v4_only(geoip:cn)",
+		"v4_only(all)",
+	}
+	gLoader := &acl.GeoLoaderT{
+		DownloadFunc: func(filename, url string) {
+			t.Logf("%s %s", filename, url)
+		},
+		DownloadErrFunc: func(err error) {
+			t.Errorf("%v", err)
+		},
+	}
+	acl, err := NewACLEngineFromString(strings.Join(Inline, "\n"), obs, gLoader)
+	if err != nil {
+		t.Errorf("%v", err)
+	}
+	uOb = acl
+	//uOb = outbounds.NewSystemResolver(uOb)
+	ob := &PluggableOutboundAdapter{PluggableOutbound: uOb}
+	//conn, err := ob.TCP("baidu.com:80")
+	conn, err := ob.TCP("vvvvvvvvvxxxxxxxxee.com:80")
+
+	if err != nil {
+		t.Errorf("%v", err)
+	} else {
+		defer conn.Close()
+	}
+}
+func buildOutbounds(urls map[string]string) []OutboundEntry {
+	var obs []OutboundEntry
+	for k, v := range urls {
+		upstreamURL, err := url.Parse(v)
+		if err != nil {
+			continue
+		}
+		switch upstreamURL.Scheme {
+		case "socks":
+			fallthrough
+		case "socks5":
+			fallthrough
+		case "socks5h":
+			{
+				password, _ := upstreamURL.User.Password()
+				obs = append(obs, OutboundEntry{
+					Name:     k,
+					Outbound: NewSOCKS5Outbound(upstreamURL.Host, upstreamURL.User.Username(), password),
+				})
+			}
+		case "http":
+			fallthrough
+		case "https":
+			{
+				ob, err := NewHTTPOutbound(v, true)
+				if err != nil {
+					log.Fatalln(err)
+				} else {
+					obs = append(obs, OutboundEntry{
+						Name:     k,
+						Outbound: ob,
+					})
+				}
+			}
+		default:
+			log.Fatalln("unknown Scheme", v)
+
+		}
+	}
+	obs = append(obs, OutboundEntry{
+		Name:     "default",
+		Outbound: NewDirectOutboundSimple(DirectOutboundModeAuto),
+	})
+	obs = append(obs, OutboundEntry{
+		Name:     "v6_only",
+		Outbound: NewDirectOutboundSimple(DirectOutboundMode6),
+	})
+	obs = append(obs, OutboundEntry{
+		Name:     "v4_only",
+		Outbound: NewDirectOutboundSimple(DirectOutboundMode4),
+	})
+	return obs
 }

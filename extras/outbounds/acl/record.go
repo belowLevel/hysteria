@@ -66,6 +66,9 @@ func (d *Record) Match(hostInfo *HostInfo) bool {
 	if d.set.Has(host) {
 		return true
 	}
+	if hostInfo.Err != nil {
+		return false
+	}
 	if hostInfo.IPv4 == nil {
 		localResolve(hostInfo)
 	}
@@ -180,13 +183,13 @@ func (d *Record) save(domain string) {
 
 func newRecord(addr string) (*Record, error) {
 	suffix := addr[7:]
-	idx := strings.Index(suffix, ",")
+	idx := strings.Index(suffix, ":")
 	if idx == -1 {
 		return nil, fmt.Errorf("%s format invalid", addr)
 	}
 	file := suffix[:idx]
 	suffix = suffix[idx+1:]
-	idx = strings.Index(suffix, ",")
+	idx = strings.Index(suffix, ":")
 	if idx == -1 {
 		return nil, fmt.Errorf("%s format invalid", file)
 	}
@@ -195,7 +198,7 @@ func newRecord(addr string) (*Record, error) {
 	if operator != "and" && operator != "or" {
 		return nil, fmt.Errorf("%s format invalid", file)
 	}
-	conditions := strings.Split(suffix, ",")
+	conditions := strings.Split(suffix, ":")
 	if len(conditions) == 0 {
 		return nil, fmt.Errorf("%s format invalid", file)
 	}

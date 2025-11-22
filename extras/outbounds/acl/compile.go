@@ -40,6 +40,7 @@ type HostInfo struct {
 	Name string
 	IPv4 net.IP
 	IPv6 net.IP
+	Err  error
 }
 
 func (h HostInfo) String() string {
@@ -74,6 +75,7 @@ type matchResult[O Outbound] struct {
 	Outbound      O
 	HijackAddress net.IP
 	Txt           string
+	Err           error
 }
 
 type compiledRuleSetImpl[O Outbound] struct {
@@ -95,18 +97,21 @@ func (s *compiledRuleSetImpl[O]) Match(host *HostInfo, proto Protocol, port uint
 		Port:  port,
 	}
 	if result, ok := s.Cache.Get(key); ok {
+		if result.Err != nil {
+			host.Err = result.Err
+		}
 		return result.Outbound, result.HijackAddress, result.Txt
 	}
 	for _, rule := range s.Rules {
 		if rule.Match(host, proto, port) {
-			result := matchResult[O]{rule.Outbound, rule.HijackAddress, rule.Txt}
+			result := matchResult[O]{rule.Outbound, rule.HijackAddress, rule.Txt, host.Err}
 			s.Cache.Add(key, result)
 			return result.Outbound, result.HijackAddress, result.Txt
 		}
 	}
 	// No match should also be cached
 	var zero O
-	s.Cache.Add(key, matchResult[O]{zero, nil, ""})
+	s.Cache.Add(key, matchResult[O]{zero, nil, "", nil})
 	return zero, nil, ""
 }
 
@@ -237,6 +242,13 @@ func parseProtoPort(protoPort string) (Protocol, uint16, uint16, bool) {
 var ipReader *IPReader
 
 func compileHostMatcher(addr string, geoLoader GeoLoader) (hostMatcher, string) {
+	if ipReader == nil {
+		mmdb, err := geoLoader.LoadGeoMMDB()
+		if err != nil {
+			return nil, err.Error()
+		}
+		ipReader = mmdb
+	}
 	addr = strings.ToLower(addr) // Normalize to lower case
 	if addr == "*" || addr == "all" {
 		// Match all hosts
@@ -247,13 +259,6 @@ func compileHostMatcher(addr string, geoLoader GeoLoader) (hostMatcher, string) 
 		country := addr[6:]
 		if len(country) == 0 {
 			return nil, "empty GeoIP country code"
-		}
-		if ipReader == nil {
-			mmdb, err := geoLoader.LoadGeoMMDB()
-			if err != nil {
-				return nil, err.Error()
-			}
-			ipReader = mmdb
 		}
 		m, err := newGeoIPMatcher(country)
 		if err != nil {
@@ -295,6 +300,13 @@ func compileHostMatcher(addr string, geoLoader GeoLoader) (hostMatcher, string) 
 	}
 	if strings.HasPrefix(addr, "domf:") {
 		di, err := newFileDI(addr)
+		if err != nil {
+			return nil, err.Error()
+		}
+		return di, ""
+	}
+	if strings.HasPrefix(addr, "record:") {
+		di, err := newRecord(addr)
 		if err != nil {
 			return nil, err.Error()
 		}

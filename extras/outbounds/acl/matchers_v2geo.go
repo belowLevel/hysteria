@@ -31,6 +31,9 @@ func (m *geoipMatcher) matchIP(ip net.IP) bool {
 }
 
 func (m *geoipMatcher) Match(host *HostInfo) bool {
+	if host.Err != nil {
+		return false
+	}
 	if host.IPv4 == nil {
 		localResolve(host)
 	}
@@ -171,6 +174,7 @@ func domainAttributeToMap(attrs []*v2geo.Domain_Attribute) map[string]bool {
 func localResolve(host *HostInfo) {
 	ips, err := net.LookupIP(host.Name)
 	if err != nil {
+		host.Err = err
 		return
 	}
 	host.IPv4, host.IPv6 = splitIPv4IPv6(ips)

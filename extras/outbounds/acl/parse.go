@@ -39,13 +39,18 @@ func parseLine(line string, num int) *TextRule {
 	if matches == nil {
 		return nil
 	}
+	txt := line
+	strs := strings.Split(line, ":")
+	if len(strs) >= 2 {
+		txt = strs[0] + ":" + strs[1] + ")"
+	}
 	return &TextRule{
 		Outbound:      matches[1],
 		Address:       strings.TrimSpace(matches[2]),
 		ProtoPort:     strings.TrimSpace(matches[3]),
 		HijackAddress: strings.TrimSpace(matches[4]),
 		LineNum:       num,
-		Txt:           line,
+		Txt:           txt,
 	}
 }
 

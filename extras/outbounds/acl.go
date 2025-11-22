@@ -83,6 +83,15 @@ func (a *aclEngine) handle(reqAddr *AddrEx, proto acl.Protocol) PluggableOutboun
 		hostInfo.IPv6 = reqAddr.ResolveInfo.IPv6
 	}
 	ob, hijackIP, txt := a.RuleSet.Match(&hostInfo, proto, reqAddr.Port)
+	if reqAddr.ResolveInfo == nil {
+		if hostInfo.IPv4 != nil || hostInfo.IPv6 != nil || hostInfo.Err != nil {
+			reqAddr.ResolveInfo = &ResolveInfo{
+				IPv4: hostInfo.IPv4,
+				IPv6: hostInfo.IPv6,
+				Err:  hostInfo.Err,
+			}
+		}
+	}
 	if ob == nil {
 		// No match, use default outbound
 		return a.Default
@@ -103,6 +112,9 @@ func (a *aclEngine) handle(reqAddr *AddrEx, proto acl.Protocol) PluggableOutboun
 
 func (a *aclEngine) TCP(reqAddr *AddrEx) (net.Conn, error) {
 	ob := a.handle(reqAddr, acl.ProtocolTCP)
+	if reqAddr.ResolveInfo != nil && reqAddr.ResolveInfo.Err != nil {
+		return nil, reqAddr.ResolveInfo.Err
+	}
 	return ob.TCP(reqAddr)
 }
 
